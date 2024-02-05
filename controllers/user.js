@@ -2,6 +2,7 @@ const Product = require('../models/product');
 const User = require('../models/user');
 const Cart = require('../models/cart');
 const Coupon = require('../models/coupon');
+const Order = require('../models/order');
 
 exports.userCart = async (req, res) => {
     try {
@@ -121,14 +122,11 @@ exports.applyCouponToUserCart = async (req, res) => {
                 err: 'Invalid Coupon',
             });
         }
-
         const user = await User.findOne({ email: req.user.email }).exec()
-
         let { products, cartTotal } = await Cart.findOne({ orderBy: user._id })
             .populate('products.product', '_id title price').exec()
-
         let totalAfterDiscount = (cartTotal - (cartTotal * validCoupon.discount) / 100).toFixed(2)
-        Cart.findOneAndUpdate({ orderBy: user._id }, { totalAfterDiscount }, { new: true });
+        Cart.findOneAndUpdate({ orderBy: user._id }, { totalAfterDiscount }, { new: true }).exec();
 
         res.json(totalAfterDiscount)
     } catch (error) {
@@ -136,3 +134,48 @@ exports.applyCouponToUserCart = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 }
+
+
+exports.createOrder = async (req, res) => {
+    const { paymentIntent } = req.body.stripeResponse
+
+    const user = await User.findOne({ email: req.user.email }).exec()
+    let { products } = await Cart.findOne({ orderBy: user._id }).exec()
+
+    let newOrder = await new Order({
+        products,
+        paymentIntent,
+        orderBy: user._id
+    }).save()
+
+    let bulkOption = products.map((item) => {
+        return {
+            updateOne: {
+                filter: { _id: item.product._id },
+                update: { $inc: { quantity: -item.count, sold: +item.count } },
+            }
+        }
+    })
+
+    let updated = await Product.bulkWrite(bulkOption, {})
+    console.log(updated, 'Product quantity -- and sold ++');
+    console.log(newOrder, "New order saved")
+    res.json({ ok: true });
+}
+
+exports.orders = async (req, res) => {
+    try {
+        let user = await User.findOne({ email: req.user.email }).exec();
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        let userOrders = await Order.find({ orderBy: user._id }).populate("products.product").exec();
+
+        res.json(userOrders);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
