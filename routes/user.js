@@ -4,7 +4,7 @@ const router = express.Router()
 
 const { authCheck } = require('../middlewares/auth')
 const { userCart, getUserCart, emptyCart, saveAddress, applyCouponToUserCart,
-    createOrder, orders, addToWishlist, wishlist, removeFromWishlist } = require('../controllers/user')
+    createOrder, orders, addToWishlist, wishlist, removeFromWishlist, createCashOrder } = require('../controllers/user')
 // router.get('/user', (req, res) => {
 //     res.json({
 //         data: 'hey you hit user API Endpoint'
@@ -17,6 +17,7 @@ router.delete('/user/cart', authCheck, emptyCart)
 router.post('/user/address', authCheck, saveAddress)
 
 router.post('/user/order', authCheck, createOrder)
+router.post('/user/cash-order', authCheck, createCashOrder)
 router.get('/user/orders', authCheck, orders)
 
 router.post('/user/cart/coupon', authCheck, applyCouponToUserCart)
