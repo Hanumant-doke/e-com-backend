@@ -179,3 +179,42 @@ exports.orders = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+
+exports.addToWishlist = async (req, res) => {
+    try {
+        const { productId } = req.body
+        const user = await User.findOneAndUpdate({ email: req.user.email }, { $addToSet: { wishlist: productId } },
+
+        ).exec()
+
+        res.json({ ok: true })
+    } catch (error) {
+        console.error("Error in addToWishlist:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+}
+
+exports.wishlist = async (req, res) => {
+    try {
+        const list = await User.findOne({ email: req.user.email }).select('whishlist').populate('wishlist').exec()
+
+        res.json(list)
+    } catch (error) {
+        console.error("Error in wishList:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+}
+
+exports.removeFromWishlist = async (req, res) => {
+    try {
+        const { productId } = req.body
+
+        const user = await User.findOneAndUpdate({ email: req.user.email },
+            { $pull: { wishlist: productId } }).exec()
+
+        res.json({ ok: true })
+    } catch (error) {
+        console.error("Error in removeFromWishlist:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+}
